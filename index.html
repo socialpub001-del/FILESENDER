@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -1606,13 +1606,39 @@
             call.on('stream', r => { document.getElementById('remote-video').srcObject = r; });
             call.on('close', endCallUI);
         }
-        function endCall() { activeCall?.close(); if(conn && conn.open) conn.send({ type: 'call-end' }); endCallUI(); }
+        
+        // FIX: Updated endCall logic to ensure UI update on both sides
+        function endCall() { 
+            // 1. Send signal FIRST
+            if(conn && conn.open) {
+                conn.send({ type: 'call-end' }); 
+            }
+            
+            // 2. Close local call object
+            if (activeCall) {
+                activeCall.close();
+            }
+            
+            // 3. Update local UI immediately
+            endCallUI(); 
+        }
+
+        // FIX: Improved endCallUI to fully reset state
         function endCallUI() {
             stopCallAlert(); // ENSURE RINGTONE STOPS
             document.getElementById('active-call-ui').style.display = 'none';
             document.getElementById('incoming-call-ui').style.display = 'none';
-            if (localStream) localStream.getTracks().forEach(t => t.stop());
+            
+            // Clean up local tracks
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            
+            activeCall = null;
+            window.pendingCall = null;
         }
+
         function toggleMic() { const t = localStream.getAudioTracks()[0]; t.enabled = !t.enabled; document.getElementById('btn-mute').classList.toggle('off'); }
         function toggleCam() { const t = localStream.getVideoTracks()[0]; if (t) { t.enabled = !t.enabled; document.getElementById('btn-cam').classList.toggle('off'); } }
         function rejectCall() {
